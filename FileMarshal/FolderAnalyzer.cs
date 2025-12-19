@@ -18,24 +18,66 @@ namespace FileMarshal
 
             return await Task.Run(() =>
             {
-                System.Threading.Thread.Sleep(3000);
+                // System.Threading.Thread.Sleep(3000);
 
                 var dirInfo = new DirectoryInfo(path);
-                var files = dirInfo.EnumerateFiles();
+                var files = GetFilesSafe(dirInfo);
 
                 var reports = files
                     .GroupBy(file => file.Extension)
-                    .Select(g => new FileReport
-                    {
-                        Extension = g.Key,
-                        Count = g.Count(),
-                        TotalSize = g.Sum(file => file.Length)
-                    })
+                    .Select(g => new FileReport(
+                        g.Key,
+                        g.Count(),
+                        g.Sum(f => f.Length)
+                     ))
                     .OrderByDescending(x => x.TotalSize)
                     .ToList();
 
                 return reports;
             });
+        }
+
+        private IEnumerable<FileInfo> GetFilesSafe(DirectoryInfo dir)
+        {
+            FileInfo[] files = null;
+            try
+            {
+                files = dir.GetFiles();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                yield break;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                yield break;
+            }
+
+            if (files != null)
+            {
+                foreach (var file in files)
+                {
+                    yield return file;
+                }
+            }
+
+            DirectoryInfo[] subDirs = null;
+            try
+            {
+                subDirs = dir.GetDirectories();
+            }
+            catch (UnauthorizedAccessException) { };
+            
+            if (subDirs != null)
+            {
+                foreach (var subDir in subDirs)
+                {
+                    foreach (var f in GetFilesSafe(subDir))
+                    {
+                        yield return f;
+                    }
+                }
+            }
         }
     }
 }

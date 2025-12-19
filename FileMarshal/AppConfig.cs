@@ -6,5 +6,9 @@ using System.Threading.Tasks;
 
 namespace FileMarshal
 {
-    public record FileReport(string Extension, int Count, long TotalSize);
+    public class AppConfig
+    {
+        public string? SelectedPath { get; set; }
+        public long MinFileSize { get; set; }
+    }
 }

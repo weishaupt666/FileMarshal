@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 
 namespace FileMarshal
 {
@@ -8,17 +10,21 @@ namespace FileMarshal
         static async Task Main(string[] args)
         {
             Console.WriteLine("Enter the path to analyze:");
-            string? path = Console.ReadLine();
+            string jsonText = await File.ReadAllTextAsync("appsettings.json");
+            var config = JsonSerializer.Deserialize<AppConfig>(jsonText);
+            string? path = config?.SelectedPath;
 
             if (string.IsNullOrWhiteSpace(path))
             {
-                Console.WriteLine("Invalid path entered. Exiting...");
-                return;
+                Console.WriteLine("Config is missing path. Enter path manually:");
+                path = Console.ReadLine();
             }
 
             var analyzer = new FolderAnalyzer();
             List<FileReport> reports;
-            Console.WriteLine("Analyzing...");
+            Console.WriteLine($"Analyzing... {path}");
+
+            var time = Stopwatch.StartNew();
 
             try
             {
@@ -37,6 +43,8 @@ namespace FileMarshal
                 return;
             }
 
+            time.Stop();
+            Console.WriteLine($"\nAnalysis took: {time.Elapsed.TotalSeconds:F2} sec.");
 
             foreach (var report in reports)
             {
