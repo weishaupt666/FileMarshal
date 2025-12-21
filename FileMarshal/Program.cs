@@ -142,7 +142,7 @@ namespace FileMarshal
                 Console.WriteLine($"Total weight: {totalSizeByType.ToPrettySize()}");
                 Console.WriteLine($"Total files: {totalFilesCount}");
                 Console.WriteLine($"Average file size: {avgSize / 1024} KB");
-                Console.WriteLine("------------------------------------------------");
+                Console.WriteLine("-----------------------------------------------");
             }
         }
     }
