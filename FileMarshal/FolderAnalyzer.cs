@@ -25,11 +25,7 @@ namespace FileMarshal
 
                 var reports = files
                     .GroupBy(file => file.Extension)
-                    .Select(g => new FileReport(
-                        g.Key,
-                        g.Count(),
-                        g.Sum(f => f.Length)
-                     ))
+                    .Select(g => new FileReport { Count = g.Count(), Extension = g.Key, TotalSize = g.Sum(f => f.Length) })
                     .OrderByDescending(x => x.TotalSize)
                     .ToList();
 

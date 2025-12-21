@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -9,6 +11,9 @@ namespace FileMarshal
     {
         static async Task Main(string[] args)
         {
+            PrintStats();
+            PrintHistory();
+
             Console.WriteLine("Enter the path to analyze:");
             string jsonText = await File.ReadAllTextAsync("appsettings.json");
             var config = JsonSerializer.Deserialize<AppConfig>(jsonText);
@@ -46,34 +51,98 @@ namespace FileMarshal
             time.Stop();
             Console.WriteLine($"\nAnalysis took: {time.Elapsed.TotalSeconds:F2} sec.");
 
-            foreach (var report in reports)
-            {
-                Console.WriteLine($"{report.Extension}: {report.Count} файлов, {report.TotalSize.ToPrettySize()} байт");
-            }
+            //foreach (var report in reports)
+            //{
+            //    Console.WriteLine($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bites");
+            //}
 
-            Console.WriteLine("Save report to file? (Enter filename): ");
-            string? outputName = Console.ReadLine();
+            Console.WriteLine("Save report to db? (y/n)");
+            string? input = Console.ReadLine()?.ToLower();
 
-            if (string.IsNullOrWhiteSpace(outputName))
+            if (input != "y")
             {
-                Console.WriteLine("Invalid path entered. Exiting...");
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(outputName))
+            using (var db = new AppDbContext())
             {
-                using (StreamWriter sw = new StreamWriter(outputName))
+                var session = new ScanSession
                 {
-                    await sw.WriteLineAsync($"Analysis of: {path}");
-                    await sw.WriteLineAsync(new string('-', 20));
+                    ScanDate = DateTime.Now,
+                    ScannedPath = path,
+                };
 
-                    foreach (var report in reports)
-                    {
-                        await sw.WriteLineAsync($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bytes");
-                    }
+                session.Reports = reports;
+                await db.ScanSession.AddAsync(session);
+                await db.SaveChangesAsync();
+                Console.WriteLine("Report saved to db.");
+            }
+        }
+
+        static void PrintHistory()
+        {
+            using (var db = new AppDbContext())
+            {
+                var lastSession = db.ScanSession
+                    .AsNoTracking()
+                    .Include(s => s.Reports)
+                    .OrderByDescending(s => s.ScanDate)
+                    .FirstOrDefault();
+
+                if (lastSession == null)
+                {
+                    Console.WriteLine("No previous scan sessions found.");
+                    return;
                 }
 
-                Console.WriteLine($"Report saved to {outputName}");
+                Console.WriteLine($"\n=== Last scan: {lastSession.ScanDate} ===");
+                Console.WriteLine($"Path: {lastSession.ScannedPath}");
+                Console.WriteLine($"Priles count (all sessions): {db.FileReports.Count()}");
+                Console.WriteLine("--- The most numerous files ---");
+
+                var topFiles = lastSession.Reports
+                    .OrderByDescending(r => r.Count)
+                    .Take(5);
+
+                foreach(var item in topFiles)
+                {
+                    Console.WriteLine($"- {item.Extension}: {item.Count} files");
+                }
+                Console.WriteLine("==========================================\n");
+            }
+        }
+
+        static void PrintStats()
+        {
+            using (var db = new AppDbContext())
+            {
+                var lastSession = db.ScanSession
+                    .AsNoTracking()
+                    .OrderByDescending(s => s.ScanDate)
+                    .FirstOrDefault();
+
+                if (lastSession == null) return;
+
+                Console.WriteLine($"\n=== Stats for last scan: {lastSession.ScanDate} ===");
+
+                var totalSizeByType = db.FileReports
+                    .Where(r => r.ScanSessionId == lastSession.Id)
+                    .Sum(r => r.TotalSize);
+
+                var totalFilesCount = db.FileReports
+                    .Where(r => r.ScanSessionId == lastSession.Id)
+                    .Sum(r => r.Count);
+
+                double avgSize = 0;
+                if (totalFilesCount > 0)
+                {
+                    avgSize = (double)totalSizeByType / totalFilesCount;
+                }
+
+                Console.WriteLine($"Total weight: {totalSizeByType.ToPrettySize()}");
+                Console.WriteLine($"Total files: {totalFilesCount}");
+                Console.WriteLine($"Average file size: {avgSize / 1024} KB");
+                Console.WriteLine("------------------------------------------------");
             }
         }
     }
