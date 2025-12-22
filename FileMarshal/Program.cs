@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using FileMarshal.Services;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -11,10 +12,52 @@ namespace FileMarshal
     {
         static async Task Main(string[] args)
         {
-            PrintStats();
-            PrintHistory();
+            Console.WriteLine("Choose an option: \n1. Analyze folder \n2. Find large sessions (> 100 MB)");
+            string? choice = Console.ReadLine();
 
-            Console.WriteLine("Enter the path to analyze:");
+            IReportService service = new ReportService();
+
+            if (choice == "2")
+            {
+                long limit = 100 * 1024 * 1024;
+                var heavySessions = await service.SearchSessionsByTotalSizeAsync(limit);
+
+                Console.WriteLine($"Found sessions: {heavySessions.Count}");
+                foreach (var s in heavySessions)
+                {
+                    var sizeMB = s.Reports.Sum(r => r.TotalSize) / 1024.0 / 1024.0;
+                    Console.WriteLine($"[{s.ScanDate} {s.ScannedPath} - {sizeMB:F2} MB]");
+                }
+                return;
+            }
+
+            var lastSession = await service.GetLastSessionAsync();
+
+            if (lastSession == null)
+            {
+                Console.WriteLine("No previous scan sessions found.");
+            }
+            else
+            {
+
+                Console.WriteLine($"\n=== Last scan: {lastSession.ScanDate} ===");
+                Console.WriteLine($"Path: {lastSession.ScannedPath}");
+
+                foreach (var report in lastSession.Reports.Take(5))
+                {
+                    Console.WriteLine($"- {report.Extension}: {report.TotalSize.ToPrettySize()}");
+                }
+                Console.WriteLine("=====================================\n");
+            };
+
+            Console.WriteLine("--- Global Stats from db ---");
+
+            var stats = await service.GetSessionStatisticsAsync(lastSession.Id);
+
+            Console.WriteLine($"Total size: {stats.TotalSize.ToPrettySize()}");
+            Console.WriteLine($"Total files; {stats.TotalFiles}");
+            Console.WriteLine($"Avg file size: {stats.AverageSize / 1024:F2} KB");
+
             string jsonText = await File.ReadAllTextAsync("appsettings.json");
             var config = JsonSerializer.Deserialize<AppConfig>(jsonText);
             string? path = config?.SelectedPath;
@@ -64,86 +107,8 @@ namespace FileMarshal
                 return;
             }
 
-            using (var db = new AppDbContext())
-            {
-                var session = new ScanSession
-                {
-                    ScanDate = DateTime.Now,
-                    ScannedPath = path,
-                };
-
-                session.Reports = reports;
-                await db.ScanSession.AddAsync(session);
-                await db.SaveChangesAsync();
-                Console.WriteLine("Report saved to db.");
-            }
-        }
-
-        static void PrintHistory()
-        {
-            using (var db = new AppDbContext())
-            {
-                var lastSession = db.ScanSession
-                    .AsNoTracking()
-                    .Include(s => s.Reports)
-                    .OrderByDescending(s => s.ScanDate)
-                    .FirstOrDefault();
-
-                if (lastSession == null)
-                {
-                    Console.WriteLine("No previous scan sessions found.");
-                    return;
-                }
-
-                Console.WriteLine($"\n=== Last scan: {lastSession.ScanDate} ===");
-                Console.WriteLine($"Path: {lastSession.ScannedPath}");
-                Console.WriteLine($"Priles count (all sessions): {db.FileReports.Count()}");
-                Console.WriteLine("--- The most numerous files ---");
-
-                var topFiles = lastSession.Reports
-                    .OrderByDescending(r => r.Count)
-                    .Take(5);
-
-                foreach(var item in topFiles)
-                {
-                    Console.WriteLine($"- {item.Extension}: {item.Count} files");
-                }
-                Console.WriteLine("==========================================\n");
-            }
-        }
-
-        static void PrintStats()
-        {
-            using (var db = new AppDbContext())
-            {
-                var lastSession = db.ScanSession
-                    .AsNoTracking()
-                    .OrderByDescending(s => s.ScanDate)
-                    .FirstOrDefault();
-
-                if (lastSession == null) return;
-
-                Console.WriteLine($"\n=== Stats for last scan: {lastSession.ScanDate} ===");
-
-                var totalSizeByType = db.FileReports
-                    .Where(r => r.ScanSessionId == lastSession.Id)
-                    .Sum(r => r.TotalSize);
-
-                var totalFilesCount = db.FileReports
-                    .Where(r => r.ScanSessionId == lastSession.Id)
-                    .Sum(r => r.Count);
-
-                double avgSize = 0;
-                if (totalFilesCount > 0)
-                {
-                    avgSize = (double)totalSizeByType / totalFilesCount;
-                }
-
-                Console.WriteLine($"Total weight: {totalSizeByType.ToPrettySize()}");
-                Console.WriteLine($"Total files: {totalFilesCount}");
-                Console.WriteLine($"Average file size: {avgSize / 1024} KB");
-                Console.WriteLine("-----------------------------------------------");
-            }
+            await service.SaveSessionAsync(path, reports);
+            Console.WriteLine("Successfully saved.");
         }
     }
 }

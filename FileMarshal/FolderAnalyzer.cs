@@ -24,7 +24,7 @@ namespace FileMarshal
                 var files = GetFilesSafe(dirInfo);
 
                 var reports = files
-                    .GroupBy(file => file.Extension)
+                    .GroupBy(file => file.Extension.ToLower())
                     .Select(g => new FileReport { Count = g.Count(), Extension = g.Key, TotalSize = g.Sum(f => f.Length) })
                     .OrderByDescending(x => x.TotalSize)
                     .ToList();
