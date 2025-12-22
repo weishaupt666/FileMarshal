@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FileMarshal
 {
@@ -15,7 +16,10 @@ namespace FileMarshal
             Console.WriteLine("Choose an option: \n1. Analyze folder \n2. Find large sessions (> 100 MB)");
             string? choice = Console.ReadLine();
 
-            IReportService service = new ReportService();
+            var services = new ServiceCollection();
+            services.AddTransient<IReportService, ReportService>();
+            using var serviceProvider = services.BuildServiceProvider();
+            var service = serviceProvider.GetRequiredService<IReportService>();
 
             if (choice == "2")
             {
@@ -94,10 +98,10 @@ namespace FileMarshal
             time.Stop();
             Console.WriteLine($"\nAnalysis took: {time.Elapsed.TotalSeconds:F2} sec.");
 
-            //foreach (var report in reports)
-            //{
-            //    Console.WriteLine($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bites");
-            //}
+            foreach (var report in reports)
+            {
+                Console.WriteLine($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bites");
+            }
 
             Console.WriteLine("Save report to db? (y/n)");
             string? input = Console.ReadLine()?.ToLower();
