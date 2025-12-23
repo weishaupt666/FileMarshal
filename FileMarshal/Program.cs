@@ -17,6 +17,8 @@ namespace FileMarshal
             string? choice = Console.ReadLine();
 
             var services = new ServiceCollection();
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlite("Data Source=filemarshal.db"));
             services.AddTransient<IReportService, ReportService>();
             using var serviceProvider = services.BuildServiceProvider();
             var service = serviceProvider.GetRequiredService<IReportService>();

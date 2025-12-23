@@ -9,67 +9,61 @@ namespace FileMarshal.Services
 {
     public class ReportService : IReportService
     {
+        private readonly AppDbContext _context;
+
+        public ReportService(AppDbContext context)
+        {
+            _context = context;
+        }
         public async Task SaveSessionAsync(String path, List<FileReport> reports)
         {
-            using (var db = new AppDbContext())
+            var session = new ScanSession
             {
-                var session = new ScanSession
-                {
-                    ScanDate = DateTime.Now,
-                    ScannedPath = path,
-                    Reports = reports
-                };
+                ScanDate = DateTime.Now,
+                ScannedPath = path,
+                Reports = reports
+            };
 
-                await db.ScanSession.AddAsync(session);
-                await db.SaveChangesAsync();
-            }
+            await _context.ScanSession.AddAsync(session);
+            await _context.SaveChangesAsync();
         }
 
         public async Task<ScanSession?> GetLastSessionAsync()
         {
-            using (var db = new AppDbContext())
-            {
-                return await db.ScanSession
-                    .AsNoTracking()
-                    .Include(s => s.Reports)
-                    .OrderByDescending(s => s.ScanDate)
-                    .FirstOrDefaultAsync();
-            }
+            return await _context.ScanSession
+                .AsNoTracking()
+                .Include(s => s.Reports)
+                .OrderByDescending(s => s.ScanDate)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<SessionStatsDto> GetSessionStatisticsAsync(int sessionId)
         {
-            using (var db = new AppDbContext())
+            var size = await _context.FileReports
+                .Where(r => r.ScanSessionId == sessionId)
+                .SumAsync(r => r.TotalSize);
+
+            var count = await _context.FileReports
+                .Where(r => r.ScanSessionId == sessionId)
+                .SumAsync(r => r.Count);
+
+            return new SessionStatsDto
             {
-                var size = await db.FileReports
-                    .Where(r => r.ScanSessionId == sessionId)
-                    .SumAsync(r => r.TotalSize);
-
-                var count = await db.FileReports
-                    .Where(r => r.ScanSessionId == sessionId)
-                    .SumAsync(r => r.Count);
-
-                return new SessionStatsDto
-                {
-                    TotalSize = size,
-                    TotalFiles = count
-                };
-            }
+                TotalSize = size,
+                TotalFiles = count
+            };
         }
 
         public async Task<List<ScanSession>> SearchSessionsByTotalSizeAsync(long minSize)
         {
-            using (var db = new AppDbContext())
-            {
-                var sessions = await db.ScanSession
-                    .AsNoTracking()
-                    .Include(s => s.Reports)
-                    .Where(s => s.Reports.Sum(r => r.TotalSize) >= minSize)
-                    .OrderByDescending(s => s.ScanDate)
-                    .ToListAsync();
+            var sessions = await _context.ScanSession
+                .AsNoTracking()
+                .Include(s => s.Reports)
+                .Where(s => s.Reports.Sum(r => r.TotalSize) >= minSize)
+                .OrderByDescending(s => s.ScanDate)
+                .ToListAsync();
 
-                return sessions;
-            }
+            return sessions;
         }
     }
 }

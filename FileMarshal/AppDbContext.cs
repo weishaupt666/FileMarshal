@@ -7,14 +7,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FileMarshal
 {
-    internal class AppDbContext : DbContext
+    public class AppDbContext : DbContext
     {
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+
+        }
         public DbSet<FileReport> FileReports { get; set; }
         public DbSet<ScanSession> ScanSession { get; set; }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlite("Data Source=filemarshal.db");
-        }
     }
 }
