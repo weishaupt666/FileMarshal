@@ -7,7 +7,7 @@ using System.IO;
 
 namespace FileMarshal
 {
-    internal class FolderAnalyzer
+    public class FolderAnalyzer : IFolderAnalyzer
     {
         public async Task<List<FileReport>> AnalyzeAsync(string path)
         {
@@ -35,10 +35,10 @@ namespace FileMarshal
 
         private IEnumerable<FileInfo> GetFilesSafe(DirectoryInfo dir)
         {
-            FileInfo[] files = null;
+            IEnumerable<FileInfo> files = null;
             try
             {
-                files = dir.GetFiles();
+                files = dir.EnumerateFiles();
             }
             catch (UnauthorizedAccessException)
             {

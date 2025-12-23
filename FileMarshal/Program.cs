@@ -20,8 +20,10 @@ namespace FileMarshal
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite("Data Source=filemarshal.db"));
             services.AddTransient<IReportService, ReportService>();
+            services.AddTransient<IFolderAnalyzer, FolderAnalyzer>();
             using var serviceProvider = services.BuildServiceProvider();
             var service = serviceProvider.GetRequiredService<IReportService>();
+            var analyzer = serviceProvider.GetRequiredService<IFolderAnalyzer>();
 
             if (choice == "2")
             {
@@ -74,7 +76,6 @@ namespace FileMarshal
                 path = Console.ReadLine();
             }
 
-            var analyzer = new FolderAnalyzer();
             List<FileReport> reports;
             Console.WriteLine($"Analyzing... {path}");
 
