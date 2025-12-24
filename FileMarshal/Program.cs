@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 
 namespace FileMarshal
 {
@@ -13,12 +14,20 @@ namespace FileMarshal
     {
         static async Task Main(string[] args)
         {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            IConfiguration configuration = builder.Build();
+            var appConfig = configuration.Get<AppConfig>();
+
             Console.WriteLine("Choose an option: \n1. Analyze folder \n2. Find large sessions (> 100 MB)");
             string? choice = Console.ReadLine();
 
             var services = new ServiceCollection();
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite("Data Source=filemarshal.db"));
+            services.AddSingleton(appConfig);
             services.AddTransient<IReportService, ReportService>();
             services.AddTransient<IFolderAnalyzer, FolderAnalyzer>();
             using var serviceProvider = services.BuildServiceProvider();
@@ -66,9 +75,7 @@ namespace FileMarshal
             Console.WriteLine($"Total files; {stats.TotalFiles}");
             Console.WriteLine($"Avg file size: {stats.AverageSize / 1024:F2} KB");
 
-            string jsonText = await File.ReadAllTextAsync("appsettings.json");
-            var config = JsonSerializer.Deserialize<AppConfig>(jsonText);
-            string? path = config?.SelectedPath;
+            string? path = appConfig?.SelectedPath;
 
             if (string.IsNullOrWhiteSpace(path))
             {
