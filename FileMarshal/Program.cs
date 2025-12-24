@@ -92,7 +92,7 @@ namespace FileMarshal
 
             try
             {
-                Task<List<FileReport>> task = analyzer.AnalyzeAsync(path);
+                Task<List<FileReport>> task = Task.Run(() => analyzer.Analyze(path));
 
                 while (!task.IsCompleted)
                 {

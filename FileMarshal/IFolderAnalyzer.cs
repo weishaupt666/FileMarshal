@@ -8,6 +8,6 @@ namespace FileMarshal
 {
     public interface IFolderAnalyzer
     {
-        public Task<List<FileReport>> AnalyzeAsync(string path);
+        public List<FileReport> Analyze(string path);
     }
 }

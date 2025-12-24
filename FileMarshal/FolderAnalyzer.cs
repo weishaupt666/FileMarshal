@@ -9,28 +9,22 @@ namespace FileMarshal
 {
     public class FolderAnalyzer : IFolderAnalyzer
     {
-        public async Task<List<FileReport>> AnalyzeAsync(string path)
+        public List<FileReport> Analyze(string path)
         {
             if (!Directory.Exists(path))
             {
                 throw new DirectoryNotFoundException("Folder not found");
             }
+            var dirInfo = new DirectoryInfo(path);
+            var files = GetFilesSafe(dirInfo);
 
-            return await Task.Run(() =>
-            {
-                // System.Threading.Thread.Sleep(3000);
+            var reports = files
+                .GroupBy(file => file.Extension.ToLower())
+                .Select(g => new FileReport { Count = g.Count(), Extension = g.Key, TotalSize = g.Sum(f => f.Length) })
+                .OrderByDescending(x => x.TotalSize)
+                .ToList();
 
-                var dirInfo = new DirectoryInfo(path);
-                var files = GetFilesSafe(dirInfo);
-
-                var reports = files
-                    .GroupBy(file => file.Extension.ToLower())
-                    .Select(g => new FileReport { Count = g.Count(), Extension = g.Key, TotalSize = g.Sum(f => f.Length) })
-                    .OrderByDescending(x => x.TotalSize)
-                    .ToList();
-
-                return reports;
-            });
+            return reports;
         }
 
         private IEnumerable<FileInfo> GetFilesSafe(DirectoryInfo dir)
