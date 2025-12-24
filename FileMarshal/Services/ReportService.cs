@@ -33,6 +33,7 @@ namespace FileMarshal.Services
             return await _context.ScanSession
                 .AsNoTracking()
                 .Include(s => s.Reports)
+                .AsSplitQuery()
                 .OrderByDescending(s => s.ScanDate)
                 .FirstOrDefaultAsync();
         }
@@ -59,6 +60,7 @@ namespace FileMarshal.Services
             var sessions = await _context.ScanSession
                 .AsNoTracking()
                 .Include(s => s.Reports)
+                .AsSplitQuery()
                 .Where(s => s.Reports.Sum(r => r.TotalSize) >= minSize)
                 .OrderByDescending(s => s.ScanDate)
                 .ToListAsync();
