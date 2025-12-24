@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
-namespace FileMarshal
+namespace FileMarshal.Data
 {
     public class AppDbContext : DbContext
     {

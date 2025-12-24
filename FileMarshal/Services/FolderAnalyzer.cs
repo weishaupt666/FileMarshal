@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 
-namespace FileMarshal
+namespace FileMarshal.Services
 {
     public class FolderAnalyzer : IFolderAnalyzer
     {
@@ -29,7 +29,7 @@ namespace FileMarshal
 
         private IEnumerable<FileInfo> GetFilesSafe(DirectoryInfo dir)
         {
-            IEnumerable<FileInfo> files = null;
+            IEnumerable<FileInfo>? files = null;
             try
             {
                 files = dir.EnumerateFiles();
@@ -51,13 +51,16 @@ namespace FileMarshal
                 }
             }
 
-            DirectoryInfo[] subDirs = null;
+            DirectoryInfo[]? subDirs = null;
             try
             {
                 subDirs = dir.GetDirectories();
             }
-            catch (UnauthorizedAccessException) { };
-            
+            catch (UnauthorizedAccessException)
+            {
+                // Ignore not accessible directories
+            }
+
             if (subDirs != null)
             {
                 foreach (var subDir in subDirs)

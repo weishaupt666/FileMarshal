@@ -10,7 +10,7 @@ namespace FileMarshal
     {
         public int Id { get; set; }
         public DateTime ScanDate { get; set; }
-        public string ScannedPath { get; set; }
+        public string ScannedPath { get; set; } = string.Empty;
         public List<FileReport> Reports { get; set; } = new();
     }
 }

@@ -7,6 +7,8 @@ using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using FileMarshal.Configuration;
+using FileMarshal.Data;
 
 namespace FileMarshal
 {
@@ -22,6 +24,12 @@ namespace FileMarshal
             var appConfig = configuration.Get<AppConfig>();
 
             string? connectionString = configuration.GetConnectionString("DefaultConnection");
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                Console.WriteLine("Error: Connection string not found!");
+                return;
+            }
 
             Console.WriteLine("Choose an option: \n1. Analyze folder \n2. Find large sessions (> 100 MB)");
             string? choice = Console.ReadLine();
@@ -55,6 +63,7 @@ namespace FileMarshal
             if (lastSession == null)
             {
                 Console.WriteLine("No previous scan sessions found.");
+                return;
             }
             else
             {
@@ -67,7 +76,7 @@ namespace FileMarshal
                     Console.WriteLine($"- {report.Extension}: {report.TotalSize.ToPrettySize()}");
                 }
                 Console.WriteLine("=====================================\n");
-            };
+            }
 
             Console.WriteLine("--- Global Stats from db ---");
 
@@ -83,6 +92,12 @@ namespace FileMarshal
             {
                 Console.WriteLine("Config is missing path. Enter path manually:");
                 path = Console.ReadLine();
+            }
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                Console.WriteLine("Error: Path is required!");
+                return;
             }
 
             List<FileReport> reports;
@@ -110,10 +125,10 @@ namespace FileMarshal
             time.Stop();
             Console.WriteLine($"\nAnalysis took: {time.Elapsed.TotalSeconds:F2} sec.");
 
-            //foreach (var report in reports)
-            //{
-            //    Console.WriteLine($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bites");
-            //}
+            foreach (var report in reports)
+            {
+                Console.WriteLine($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bites");
+            }
 
             Console.WriteLine("Save report to db? (y/n)");
             string? input = Console.ReadLine()?.ToLower();
