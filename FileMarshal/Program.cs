@@ -21,13 +21,15 @@ namespace FileMarshal
             IConfiguration configuration = builder.Build();
             var appConfig = configuration.Get<AppConfig>();
 
+            string? connectionString = configuration.GetConnectionString("DefaultConnection");
+
             Console.WriteLine("Choose an option: \n1. Analyze folder \n2. Find large sessions (> 100 MB)");
             string? choice = Console.ReadLine();
 
             var services = new ServiceCollection();
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite("Data Source=filemarshal.db"));
-            services.AddSingleton(appConfig);
+            services.AddSingleton(connectionString);
             services.AddTransient<IReportService, ReportService>();
             services.AddTransient<IFolderAnalyzer, FolderAnalyzer>();
             using var serviceProvider = services.BuildServiceProvider();
@@ -108,10 +110,10 @@ namespace FileMarshal
             time.Stop();
             Console.WriteLine($"\nAnalysis took: {time.Elapsed.TotalSeconds:F2} sec.");
 
-            foreach (var report in reports)
-            {
-                Console.WriteLine($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bites");
-            }
+            //foreach (var report in reports)
+            //{
+            //    Console.WriteLine($"{report.Extension}: {report.Count} files, {report.TotalSize.ToPrettySize()} bites");
+            //}
 
             Console.WriteLine("Save report to db? (y/n)");
             string? input = Console.ReadLine()?.ToLower();
